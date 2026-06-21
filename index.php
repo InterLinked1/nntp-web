@@ -51,7 +51,7 @@ $mbAvailable = function_exists('mb_decode_mimeheader');
 $sock = nntp_connect($hostname, $port, $tls, $username, $password);
 if (isset($_GET['message'])) {
 	/* Display an article, by Message-ID */
-	$messageID = preg_replace('/[^A-Za-z0-9.@_<>-]/', '', $_GET['message']);
+	$messageID = preg_replace('/[^A-Za-z0-9.$@_<>-]/', '', $_GET['message']);
 	nntp_article($sock, $messageID, 0, $headers, $body);
 	displayArticle($headers, $body, $_GET['message'], NULL, 0);
 } else if (isset($_GET['group'])) {
@@ -145,7 +145,9 @@ if (isset($_GET['message'])) {
 	}
 	$articles = array();
 	foreach($messages as $msgid) {
-		nntp_expect_code($sock, 224);
+		if (nntp_expect_code_return($sock, 224)) {
+			die("OVER MSGID failed for $msgid: $lastResponse");
+		}
 		$s = nntp_read_line($sock);
 		$s2 = nntp_read_line($sock);
 		if ($s2 !== ".") {
@@ -490,7 +492,6 @@ function nntp_expect_code($sock, $expectedCode) {
 }
 
 function nntp_expect_code_return($sock, $expectedCode) {
-	global $lastResponse;
 	$code = nntp_read_code($sock);
 	if ($code != $expectedCode) {
 		return true;
@@ -621,7 +622,7 @@ function nntp_newnews($sock, $since, &$articles) {
 function nntp_overview($sock, $start, $end, &$articles) {
 	fprintf($sock, "OVER %d-%d\r\n", $end, $start);
 	if (nntp_expect_code_return($sock, 224)) {
-		error_log("OVER $end-$start failed", 0);
+		error_log("OVER $end-$start failed: $lastResponse", 0);
 		die();
 	}
 	$articles = array();
@@ -744,11 +745,11 @@ function extract_headers($headers, $wantedHeaders, &$outputHeaders) {
 					$c++;
 				}
 				$outputHeaders[$hdrname] = $s;
-			} else if ($hdrname === "References") {
+			} else if ($hdrname === "References" || $hdrname === "Message-ID") {
 				$refs = explode(' ', $hdrval);
 				foreach ($refs as $ref) {
 					$ref = trim($ref);
-					$s .= sprintf("%s<a href='?message=%s'>%s</a>", $c > 0 ? " " : "", urlencode($ref), $ref);
+					$s .= sprintf("%s<a href='?message=%s'>%s</a>", $c > 0 ? " " : "", urlencode($ref), htmlentities($ref));
 					$c++;
 				}
 				$outputHeaders[$hdrname] = $s;
