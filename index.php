@@ -55,7 +55,7 @@ if (isset($_GET['message'])) {
 	nntp_article($sock, $messageID, 0, $headers, $body);
 	displayArticle($headers, $body, $_GET['message'], NULL, 0);
 } else if (isset($_GET['group'])) {
-	$group = preg_replace('/[^A-Za-z0-9.-]/', '', $_GET['group']);
+	$group = preg_replace('/[^A-Za-z0-9.+-]/', '', $_GET['group']);
 	if (isset($_GET['article'])) {
 		/* Display an article */
 		$articleNumber = (int) $_GET['article'];
