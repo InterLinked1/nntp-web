@@ -20,6 +20,7 @@ $username = "username";
 $password = "password";
 
 /* Group/article display */
-$recentTime = 86400; /* Max interval for NEWNEWS command */
-$hideEmptyThreshold = 6000; /* Max # of total groups beyond which empty groups are hidden by default */
+$recentTime = 14400; /* Max interval for NEWNEWS command */
+$recentLimit = 100; /* Max number of recent messages to show */
+$hideEmptyThreshold = 5000; /* Max # of total groups beyond which empty groups are hidden by default */
 ?>

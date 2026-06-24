@@ -10,8 +10,10 @@
  *
  */
 
-$recentTime = 86400;
-$hideEmptyThreshold = 6000;
+/* Defaults, can be overridden in the config */
+$recentTime = 14400;
+$recentLimit = 100;
+$hideEmptyThreshold = 5000;
 
 /* --- User config goes in config.php --- */
 
@@ -137,8 +139,7 @@ if (isset($_GET['message'])) {
 	/* Use NEWNEWS to view recent articles */
 	/* Note that ordering is not guaranteed here if the server does not return NEWNEWS response in order of arrival */
 	nntp_newnews($sock, time() - $recentTime, $messages);
-	$limit = 250;
-	$messages = array_slice($messages, -$limit);
+	$messages = array_slice($messages, -$recentLimit);
 	foreach($messages as $msgid) {
 		/* Note: This relies on the OVER MSGID capability */
 		fprintf($sock, "OVER %s\r\n", $msgid);
@@ -167,6 +168,7 @@ if (isset($_GET['message'])) {
 		$articles[$msgid] = $fields;
 	}
 	$articles = array_reverse($articles);
+	$recentGroups = array();
 	start_page("Recent Articles");
 	printf("<p><a href='%s'>Groups</a></p>", $baseURL);
 	printf("<table>");
@@ -183,7 +185,7 @@ if (isset($_GET['message'])) {
 				$fields[8] = substr($fields[8], 5);
 				$fields[8] = ltrim($fields[8]);
 			}
-			$xref = xref_format($fields[8]);
+			$xref = xref_format($fields[8], $recentGroups);
 			$x = explode(' ', $xref);
 			array_shift($x);
 			$xref = "<span>" . implode(' ', $x) . "</span>"; /* Remove hostname from Xref */
@@ -199,6 +201,14 @@ if (isset($_GET['message'])) {
 		}
 		printf("<tr class='small'><td><a href='?message=%s'>%s</a></td><td>%s</td><td>%s</td><td>%s</td><td class='right'>%d</td><td class='right'>%d</td></tr>\n",
 			urlencode($msgid), $subject, $from, $xref, $date, $lines, $bytes);
+	}
+	printf("</table>");
+
+	/* Display the group representation of recent articles, in order of articles per group (including crossposts) */
+	arsort($recentGroups);
+	printf("<hr><b>Groups with recent articles</b><table class='small'>");
+	foreach ($recentGroups as $grp => $count) {
+		printf("<tr><th><a href='?group=%s'>%s</a></th><td class='right'>%d</td></tr>", urlencode($grp), htmlentities($grp), $count);
 	}
 	printf("</table>");
 } else {
@@ -708,7 +718,7 @@ function decode_encoded_header($str) {
 	return $str;
 }
 
-function xref_format(String $hdrval) {
+function xref_format(String $hdrval, &$groupCounts = null) {
 	$xrefs = explode(' ', $hdrval);
 	$s = "";
 	$c = 0;
@@ -716,6 +726,13 @@ function xref_format(String $hdrval) {
 		if ($c > 0) {
 			[$ngrp, $artnum] = explode(':', $xref);
 			$s .= sprintf(" <a href='?group=%s&article=%d'>%s:%d</a>", urlencode($ngrp), $artnum, $ngrp, $artnum);
+			if ($groupCounts !== null) {
+				if (array_key_exists($ngrp, $groupCounts)) {
+					$groupCounts[$ngrp] += 1;
+				} else {
+					$groupCounts[$ngrp] = 1;
+				}
+			}
 		} else {
 			$s .= $xref; /* Server name */
 		}
