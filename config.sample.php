@@ -5,6 +5,7 @@
 $hostname = "127.0.0.1";
 $port = 119; /* Typically either 119 or 563 if using implicit TLS on reader port */
 $tls = false; /* Whether to use implicit TLS. STARTTLS is not supported. */
+$modeReaderNeeded = true; /* Whether to send MODE READER if connecting to port 119 (ignored for other ports) */
 
 /* User authentication */
 

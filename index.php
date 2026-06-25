@@ -14,6 +14,7 @@
 $recentTime = 14400;
 $recentLimit = 100;
 $hideEmptyThreshold = 5000;
+$modeReaderNeeded = true;
 
 /* --- User config goes in config.php --- */
 
@@ -51,6 +52,17 @@ $baseURL = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 $mbAvailable = function_exists('mb_decode_mimeheader');
 
 $sock = nntp_connect($hostname, $port, $tls, $username, $password);
+
+/* If MODE READER is needed, send it now */
+if ($modeReaderNeeded && $port === 119) {
+	fprintf($sock, "MODE READER\r\n");
+	$code = nntp_read_code($sock);
+	if ($code !== 200 && $code !== 201) {
+		printf("Expected 200/201, got: %s\n", $lastResponse);
+		die();
+	}
+}
+
 if (isset($_GET['message'])) {
 	/* Display an article, by Message-ID */
 	$messageID = preg_replace('/[^A-Za-z0-9.$@_<>-]/', '', $_GET['message']);
