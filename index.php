@@ -617,7 +617,7 @@ function nntp_listgroup($sock, $group, &$articleIDs) {
 function nntp_newnews($sock, $since, &$articles) {
 	$articles = array();
 	$dt = new DateTime('@' . $since, new DateTimeZone('Etc/UTC'));
-	$datetime = $dt->format('Ymd His ');
+	$datetime = $dt->format('Ymd His');
 	fprintf($sock, "NEWNEWS * %s GMT\r\n", $datetime);
 	nntp_expect_code($sock, 230);
 	for (;;) {
