@@ -15,6 +15,7 @@ $recentTime = 14400;
 $recentLimit = 100;
 $hideEmptyThreshold = 5000;
 $modeReaderNeeded = true;
+$listActiveAll = true;
 
 /* --- User config goes in config.php --- */
 
@@ -239,9 +240,11 @@ if (isset($_GET['message'])) {
 	list_table($sock, "LIST MODERATORS", "Moderator Patterns", ":");
 } else {
 	/* List all groups carried by the server */
-	nntp_list_counts($sock, $groups); /* LIST COUNTS gives us everything LIST ACTIVE does (and more), so no need to do LIST ACTIVE first */
-	nntp_list_active_times($sock, $groups);
-	nntp_list_newsgroups($sock, $groups);
+	if (!$listActiveAll || nntp_list_all($sock, $groups)) { /* Try the non-standardized LIST ACTIVE.ALL first if available, then fall back to standard commands if not */
+		nntp_list_counts($sock, $groups); /* LIST COUNTS gives us everything LIST ACTIVE does (and more), so no need to do LIST ACTIVE first */
+		nntp_list_active_times($sock, $groups);
+		nntp_list_newsgroups($sock, $groups);
+	}
 
 	$groupCount = count($groups);
 	$totalArticleCount = array_sum(array_column($groups, 'count'));
@@ -583,8 +586,8 @@ function nntp_list_counts($sock, &$groups) {
 			'low' => (int) $fields[2],
 			'count' => (int) $fields[3],
 			'status' => $fields[4],
-			'creator' => '',
 			'created' => 0,
+			'creator' => '',
 			'description' => '',
 		];
 		$groups[$fields[0]] = $g;
@@ -634,6 +637,40 @@ function nntp_list_newsgroups($sock, &$groups) {
 			}
 		}
 	}
+}
+
+function nntp_list_all($sock, &$groups) {
+	fprintf($sock, "LIST ACTIVE.ALL\r\n");
+	/* Since we don't use CAPABILITIES to check if LIST ACTIVE.ALL, allow for graceful fallback if needed */
+	$code = nntp_read_code($sock);
+	if ($code !== 215) {
+		return true;
+	}
+	$groups = array();
+	for (;;) {
+		$s = nntp_read_line($sock);
+		if ($s === ".") {
+			break;
+		}
+		$fields = explode("\t", $s);
+		if (!isset($fields[7])) {
+			error_log("Unexpected LIST ACTIVE.ALL response: " . $s, 0);
+			http_response_code(500);
+			die();
+		}
+		$g = [
+			'name' => $fields[0],
+			'high' => (int) $fields[1],
+			'low' => (int) $fields[2],
+			'count' => (int) $fields[3],
+			'status' => $fields[4],
+			'created' => $fields[5],
+			'creator' => $fields[6],
+			'description' => $fields[7],
+		];
+		$groups[$fields[0]] = $g;
+	}
+	return false;
 }
 
 function nntp_list_other($sock, $command, &$response) {
