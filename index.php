@@ -223,6 +223,20 @@ if (isset($_GET['message'])) {
 		printf("<tr><th><a href='?group=%s'>%s</a></th><td class='right'>%d</td></tr>", urlencode($grp), htmlentities($grp), $count);
 	}
 	printf("</table>");
+} else if (isset($_GET['info'])) {
+	start_page("News Server Info");
+	printf("<h2><a href='%s'>Newsgroups</a></h2>", $baseURL);
+
+	nntp_list_other($sock, "LIST MOTD", $motd);
+	if ($motd) {
+		$motd = str_replace("\n", "<br>", $motd);
+		printf("<h3>Message of the Day</h3><p>%s</p>", $motd);
+	}
+
+	list_table($sock, "LIST SUBSCRIPTIONS", "Recommended Subscriptions", null);
+	list_table($sock, "LIST DISTRIBUTIONS", "Distributions", "\t");
+	list_table($sock, "LIST DISTRIB.PATS", "Distribution Patterns", ":");
+	list_table($sock, "LIST MODERATORS", "Moderator Patterns", ":");
 } else {
 	/* List all groups carried by the server */
 	nntp_list_counts($sock, $groups); /* LIST COUNTS gives us everything LIST ACTIVE does (and more), so no need to do LIST ACTIVE first */
@@ -269,11 +283,12 @@ if (isset($_GET['message'])) {
 	start_page("Groups");
 	printf("<h2><a href='%s'>Newsgroups</a></h2>", $baseURL);
 	printf("<p><b>$groupCount</b> group%s, %s article%s || <a href='?recent'>view recent</a>", ($groupCount === 1 ? "" : "s"), $totalArticleCount, ($totalArticleCount === 1 ? "" : "s"));
+	printf(" || <a href='?info'>more info</a>");
 	if ($allowUserAuthentication) {
 		if (isset($_SERVER['PHP_AUTH_USER'])) {
-			printf(" || <span class='right small'><i>Logged in as <b>%s</b></i></span>", $username);
+			printf(" || <span class='small'><i>Logged in as <b>%s</b></i></span>", $username);
 		} else {
-			printf(" || <span class='right small'><i><a href='?login'>Log in</a></i></span>");
+			printf(" || <span class='small'><i><a href='?login'>Log in</a></i></span>");
 		}
 	}
 	if (!isset($_GET['sort'])) {
@@ -370,6 +385,24 @@ fclose($sock);
 
 /* Helper functions */
 
+function list_table($sock, $command, $name, $delim) {
+	nntp_list_other($sock, $command, $results);
+	if ($results) {
+		$results = explode("\n", rtrim($results)); /* Strip trailing LF or we'll have an empty array element at the end */
+		printf("<h3>%s</h3><table>", $name);
+		foreach ($results as $result) {
+			if ($delim) {
+				[$key, $val] = explode($delim, $result);
+				printf("<tr><th class='left'>%s</th><td>%s</td></tr>", $key, $val);
+			} else {
+				/* Only used for LIST SUBSCRIPTIONS, so we hardcode linking to the groups */
+				printf("<tr><th class='left'><a href='?group=%s'>%s</a></th></tr>", urlencode($result), $result);
+			}
+		}
+		printf("</table>");
+	}
+}
+
 function show_page_nav_links(String $group, bool $newerArticlesExist, bool $olderArticlesExist, int $page, int $totalPages, $start, $end) {
 	$eGroup = urlencode($group);
 	if ($newerArticlesExist) {
@@ -389,6 +422,7 @@ function show_page_nav_links(String $group, bool $newerArticlesExist, bool $olde
 
 function start_page($title) {
 	echo '<html><head><style>
+	.left { text-align: left; }
 	.right { text-align: right; }
 	.small { font-size: 0.85em; }
 	table { border-collapse: collapse; }
@@ -598,6 +632,23 @@ function nntp_list_newsgroups($sock, &$groups) {
 			if ($fields[1] !== "No description.") {
 				$groups[$group]['description'] = $fields[1];
 			}
+		}
+	}
+}
+
+function nntp_list_other($sock, $command, &$response) {
+	fprintf($sock, "%s\r\n", $command);
+	$code = nntp_read_code($sock);
+	if ($code !== 215) {
+		$resonse = null;
+	} else {
+		$response = "";
+		for (;;) {
+			$s = nntp_read_line($sock);
+			if ($s === ".") {
+				break;
+			}
+			$response .= ($s . "\n");
 		}
 	}
 }
