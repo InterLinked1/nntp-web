@@ -280,7 +280,7 @@ if (isset($_GET['message'])) {
 		printf("<p class='small'><b>Hierarchies:</b> ");
 		$c = 0;
 		foreach ($hierarchies as $h => $hCount) {
-			printf("%s%s (%d)", $c++ > 0 ? " | " : "", $h, $hCount);
+			printf("%s<a href='#hier-%s'>%s</a> (%d)", $c++ > 0 ? " | " : "", urlencode($h), $h, $hCount);
 		}
 
 		/* Generate a compact wildmat that encompasses all these groups */
@@ -334,8 +334,15 @@ if (isset($_GET['message'])) {
 		printf("<th><a href='%s'>%s</a></th>", $sortLink, $colName);
 	}
 	echo "</tr>";
+	$lastHier = null;
 	foreach($groups as $g) {
-		echo "<tr>";
+		$topHier = explode('.', $g['name'])[0];
+		if ($lastHier !== $topHier) {
+			$lastHier = $topHier;
+			printf("<tr id='hier-%s'>", urlencode($topHier));
+		} else {
+			echo "<tr>";
+		}
 		foreach ($columns as $col) {
 			if ($col === "group") {
 				$val = sprintf("<a href='?group=%s'>%s</a>", urlencode($g['name']), $g['name']);
