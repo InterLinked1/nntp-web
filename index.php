@@ -303,6 +303,7 @@ if (isset($_GET['message'])) {
 
 		/* Generate a compact wildmat that encompasses all these groups */
 		$hPatterns = array();
+		$hierarchyWildmat = "";
 		foreach ($hierarchies as $h => $hCount) {
 			$hGroups = array();
 			/* Get all the groups in this hierarchy */
@@ -326,8 +327,13 @@ if (isset($_GET['message'])) {
 				$prefix = substr($first, 0, $i);
 				$hPatterns[] = $prefix . '*'; /* $prefix already ends in '.' */
 			}
+			if ($hierarchyWildmat !== "") {
+				$hierarchyWildmat .= ",";
+			}
+			$hierarchyWildmat .= $h . ".*";
 		}
-		printf("<br><span class='small'><b>Wildmat:</b> <span class='small'>%s</span></span>", implode(',', $hPatterns));
+		printf("<br><span class='small'><b>Hierarchy Wildmat:</b> <span class='small'>%s</span></span>", $hierarchyWildmat);
+		printf("<br><span class='small'><b>Specific Wildmat:</b> <span class='small'>%s</span></span>", implode(',', $hPatterns));
 		printf("</p>");
 	}
 
