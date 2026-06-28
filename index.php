@@ -66,7 +66,7 @@ if ($modeReaderNeeded && $port === 119) {
 
 if (isset($_GET['message'])) {
 	/* Display an article, by Message-ID */
-	$messageID = preg_replace('/[^A-Za-z0-9.$@_<>-]/', '', $_GET['message']);
+	$messageID = preg_replace('/[^A-Za-z0-9.$%@_<>-]/', '', $_GET['message']);
 	nntp_article($sock, $messageID, 0, $headers, $body);
 	displayArticle($headers, $body, $_GET['message'], NULL, 0);
 } else if (isset($_GET['group'])) {
